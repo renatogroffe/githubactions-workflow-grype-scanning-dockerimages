@@ -1,0 +1,55 @@
+name: grype-security-scan
+
+on:
+  push:
+    branches:
+      - main
+
+env:  
+  # CONTAINER_IMAGE: 'renatogroffe/dotnet10-job-httprequest:2'
+  CONTAINER_IMAGE: 'renatogroffe/apicontagem:latest'
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Instalar o Grype
+        run: |
+          curl -sSfL https://get.anchore.io/grype | sudo sh -s -- -b /usr/local/bin
+
+      - name: Testando o Grype apos a instalacao
+        run: |
+          grype --help
+
+      - name: Baixando a imagem a ser analisada
+        run: |
+          docker pull ${{ env.CONTAINER_IMAGE }}
+
+      - name: Exibir imagens presentes no ambiente
+        run: |
+          docker images
+
+      - name: Analisando imagem com Grype
+        run: |
+          grype ${{ env.CONTAINER_IMAGE }} --output table --output sarif=grype-analysis.sarif
+
+      - name: Exibir imagens apos analise com Grype
+        run: |
+          docker images
+
+      - name: Exibir arquivos no diretorio-raiz
+        run: |
+          pwd
+          echo
+          ls -l
+
+      - name: Upload arquivo SARIF file
+        if: always()
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: ./grype-analysis.sarif
+          category: sast-tools
